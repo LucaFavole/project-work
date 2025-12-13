@@ -142,7 +142,7 @@ class Problem:
         
         genetic_path, genetic_cost = genetic_solve(self)
         merge_path, merge_cost = merge_solver(self)
-
+        print(merge_path)
         print("Checking feasibility of genetic solution")
         check_feasibility(self, genetic_path)
         print("Checking feasibility of merge solution")
@@ -187,9 +187,8 @@ def genetic_solve(problem: Problem) -> float:
     best_individual = solver.evolve()
     
     # Extract final solution (path and cost)
-    path = best_individual.phenotype
+    path = best_individual.rebuild_phenotype()
     cost = best_individual.fitness
-    
     logging.info(f"Solution found with cost: {cost:.2f}")
     logging.info(f"Path length: {len(path)} steps")
     logging.debug(f"Full path: {path}")  # Uncomment to see full path details

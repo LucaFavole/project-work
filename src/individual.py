@@ -53,15 +53,14 @@ class Individual:
 
     def rebuild_phenotype(self):
         """
-        Ricostruisce il percorso usando NetworkX. 
-        Lento? Sì, ma viene chiamato 1 volta sola alla fine, quindi è irrilevante.
+        Ricostruisce il percorso come lista di tuple [(nodo, oro_preso), ...]
         """
-        path = [0]
+        path = [] # Ora è una lista di tuple
         current_node = 0
         current_weight = 0
         alpha = self.problem.alpha
         beta = self.problem.beta
-        graph = self.problem.graph # Uso diretto del grafo
+        graph = self.problem.graph
 
         for next_node in self.genome:
             gold = self.problem.graph.nodes[next_node]['gold']
@@ -75,23 +74,36 @@ class Individual:
                          (d_out + (alpha * d_out * 0) ** beta)
 
             if cost_split < cost_direct:
-                # Torna a casa e poi vai
-                path_to_home = nx.shortest_path(graph, current_node, 0, weight='dist')
-                path_to_next = nx.shortest_path(graph, 0, next_node, weight='dist')
-                path.extend(path_to_home[1:])
-                path.extend(path_to_next[1:])
+                # 1. Torna a casa (scarica)
+                p_home = nx.shortest_path(graph, current_node, 0, weight='dist')
+                # Aggiungi tutti i passi intermedi con 0 oro
+                for step in p_home[1:-1]:
+                    path.append((step, 0))
+                path.append((0, 0)) # Arrivo a casa
+                
+                # 2. Ripartire verso next_node
+                p_next = nx.shortest_path(graph, 0, next_node, weight='dist')
+                for step in p_next[1:-1]:
+                    path.append((step, 0))
+                
                 current_weight = 0
             else:
-                # Vai diretto
-                path_direct = nx.shortest_path(graph, current_node, next_node, weight='dist')
-                path.extend(path_direct[1:])
+                # Vai diretto (passi intermedi)
+                p_dir = nx.shortest_path(graph, current_node, next_node, weight='dist')
+                for step in p_dir[1:-1]:
+                    path.append((step, 0))
+            
+            # Arrivo alla destinazione e PRENDO L'ORO
+            path.append((next_node, gold))
             
             current_weight += gold
             current_node = next_node
         
-        # Ritorno finale
-        path_home = nx.shortest_path(graph, current_node, 0, weight='dist')
-        path.extend(path_home[1:])
+        # Ritorno finale a 0
+        p_end = nx.shortest_path(graph, current_node, 0, weight='dist')
+        for step in p_end[1:]:
+            path.append((step, 0))
+            
         self.phenotype = path
         return path
 
