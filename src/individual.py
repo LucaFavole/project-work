@@ -29,24 +29,31 @@ class Individual:
                 self.fitness = float('inf')
                 return float('inf')
 
-            # Calcolo costi (Matematica pura, niente liste)
-            cost_direct = d_dir + (alpha * d_dir * current_weight) ** beta
+            # Calcolo costi: PRIMA devo considerare se conviene tornare a casa
+            # Cost per andare diretto con il peso attuale
+            cost_direct = d_dir + (d_dir * alpha * current_weight) ** beta
             
-            c_return = d_home + (alpha * d_home * current_weight) ** beta
-            c_go = d_out + (alpha * d_out * 0) ** beta 
+            # Cost per tornare a casa e ripartire
+            c_return = d_home + (d_home * alpha * current_weight) ** beta
+            c_go = d_out  # peso = 0 quando riparto, quindi niente penalità
             cost_split = c_return + c_go
 
             if cost_split < cost_direct:
-                total_cost += cost_split
-                current_weight = 0 
+                # Torno a casa: aggiungo costo ritorno, scarico il peso, poi vado al nodo
+                total_cost += c_return
+                current_weight = 0
+                total_cost += c_go
             else:
+                # Vado diretto
                 total_cost += cost_direct
             
+            # IMPORTANTE: raccolgo l'oro DOPO essermi mosso (sono arrivato al nodo)
             current_weight += gold
             current_node = next_node
         
+        # Ritorno finale al depot
         d_end = self.dist_cache[current_node][0]
-        total_cost += d_end + (alpha * d_end * current_weight) ** beta
+        total_cost += d_end + (d_end * alpha * current_weight) ** beta
 
         self.fitness = total_cost
         return total_cost
@@ -54,8 +61,9 @@ class Individual:
     def rebuild_phenotype(self):
         """
         Ricostruisce il percorso come lista di tuple [(nodo, oro_preso), ...]
+        Deve essere coerente con evaluate() e path_cost()
         """
-        path = [] # Ora è una lista di tuple
+        path = [(0, 0.0)]  # Inizia dal depot
         current_node = 0
         current_weight = 0
         alpha = self.problem.alpha
@@ -69,29 +77,30 @@ class Individual:
             d_home = self.dist_cache[current_node][0]
             d_out = self.dist_cache[0][next_node]
 
-            cost_direct = d_dir + (alpha * d_dir * current_weight) ** beta
-            cost_split = (d_home + (alpha * d_home * current_weight) ** beta) + \
-                         (d_out + (alpha * d_out * 0) ** beta)
+            # Stessa logica di evaluate()
+            cost_direct = d_dir + (d_dir * alpha * current_weight) ** beta
+            c_return = d_home + (d_home * alpha * current_weight) ** beta
+            c_go = d_out
+            cost_split = c_return + c_go
 
             if cost_split < cost_direct:
                 # 1. Torna a casa (scarica)
                 p_home = nx.shortest_path(graph, current_node, 0, weight='dist')
                 # Aggiungi tutti i passi intermedi con 0 oro
-                for step in p_home[1:-1]:
-                    path.append((step, 0))
-                path.append((0, 0)) # Arrivo a casa
+                for step in p_home[1:]:
+                    path.append((step, 0.0))
                 
                 # 2. Ripartire verso next_node
                 p_next = nx.shortest_path(graph, 0, next_node, weight='dist')
-                for step in p_next[1:-1]:
-                    path.append((step, 0))
+                for step in p_next[1:-1]:  # Escludi depot e destinazione finale
+                    path.append((step, 0.0))
                 
                 current_weight = 0
             else:
                 # Vai diretto (passi intermedi)
                 p_dir = nx.shortest_path(graph, current_node, next_node, weight='dist')
-                for step in p_dir[1:-1]:
-                    path.append((step, 0))
+                for step in p_dir[1:-1]:  # Escludi nodo corrente e destinazione
+                    path.append((step, 0.0))
             
             # Arrivo alla destinazione e PRENDO L'ORO
             path.append((next_node, gold))
@@ -102,7 +111,7 @@ class Individual:
         # Ritorno finale a 0
         p_end = nx.shortest_path(graph, current_node, 0, weight='dist')
         for step in p_end[1:]:
-            path.append((step, 0))
+            path.append((step, 0.0))
             
         self.phenotype = path
         return path

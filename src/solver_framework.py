@@ -70,7 +70,7 @@ def genetic_solver(problem) -> tuple[list[tuple[int, float]], float]:
     cost = best_individual.fitness
     
 
-    path = [(0, 0.0)] + path  # Ensure depot at start
+    # path = [(0, 0.0)] + path  # Ensure depot at start
     # Apply beta-optimization to full genetic path
     optimized_path = optimize_full_path(path, problem)
     optimized_cost = problem.path_cost(optimized_path)

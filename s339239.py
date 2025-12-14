@@ -155,13 +155,13 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     out = open("results.txt", "w")
     # Possible values: num_cities: 100, 1_000; density: 0.2, 1; alpha: 1, 2; beta: 1, 2
-    for num_cities in [100]:
+    for num_cities in [100, 200]:
         for density in [0.2, 1]:
-            for beta in [0.0, 0.5, 1, 2]:
-                for alpha in [0, 1, 2]:
+            for beta in [0.5, 1, 2]:
+                for alpha in [1, 2]:
                     print(f"Running Problem with {num_cities} cities, density={density}, alpha={alpha}, beta={beta}")
                     start_time = time.time()
-                    (improvment, sol_cost, base_cost) = Problem(100, density=density, alpha=alpha, beta=beta).compare()
+                    (improvment, sol_cost, base_cost) = Problem(num_cities, density=density, alpha=alpha, beta=beta).compare()
                     elapsed_time = time.time() - start_time
                     out.write(f"Density: {density}, Alpha: {alpha}, Beta: {beta} => Improvement: {improvment:.2f}%, Solution Cost: {sol_cost:.2f}, Baseline Cost: {base_cost:.2f}, Time: {elapsed_time:.2f}s\n")
     out.close()
