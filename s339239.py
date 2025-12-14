@@ -8,7 +8,7 @@ import time
 from icecream import ic
 from src.genetic_solver import GeneticSolver
 from src.merge_optimizer import merge_solver
-from src.utils import check_feasibility
+from src.utils import check_feasibility, optimize_full_path
     
 class Problem:
     _graph: nx.Graph
@@ -142,7 +142,7 @@ class Problem:
         
         genetic_path, genetic_cost = genetic_solve(self)
         merge_path, merge_cost = merge_solver(self)
-        print(merge_path)
+
         print("Checking feasibility of genetic solution")
         check_feasibility(self, genetic_path)
         print("Checking feasibility of merge solution")
@@ -192,7 +192,16 @@ def genetic_solve(problem: Problem) -> float:
     logging.info(f"Solution found with cost: {cost:.2f}")
     logging.info(f"Path length: {len(path)} steps")
     logging.debug(f"Full path: {path}")  # Uncomment to see full path details
-    return path, cost
+
+    path = [(0, 0.0)] + path  # Ensure depot at start
+    # Apply beta-optimization to full genetic pathù
+    optimized_path = optimize_full_path(path, problem)
+    optimized_cost = problem.path_cost(optimized_path)
+
+    logging.info(f"Optimized path cost after beta-optimization: {optimized_cost:.2f}")
+
+
+    return optimized_path, optimized_cost
 
 
 

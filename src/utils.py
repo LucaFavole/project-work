@@ -1,5 +1,6 @@
 from typing import List, Tuple
 import networkx as nx
+from src.beta_optimizer import path_optimizer
 
 def check_feasibility(
     problem,
@@ -45,3 +46,60 @@ def check_feasibility(
             return False
     
     return True
+
+def split_path(path: list[tuple[int, float]]) -> list[list[tuple[int, float]]]:
+    """
+    Splits a path into sub-paths at each return to depot (node 0).
+    
+    :param path: Sequence of (city, gold to pick up at city)
+                        Example: [(0, 0), (20, 1000), (0, 0), (30, 500), (0, 0)]
+        :type path: list[tuple[int, float]]
+    :return: List of sub-paths
+    :rtype: list[list[tuple[int, float]]]
+    """
+    sub_paths = []
+    current_sub_path = []
+    
+    for node, gold in path:
+        current_sub_path.append((node, gold))
+        if node == 0 and len(current_sub_path) > 1:
+            sub_paths.append(current_sub_path)
+            current_sub_path = [(0, 0.0)]  # Start new sub-path from depot
+    
+    if len(current_sub_path) > 1:
+        sub_paths.append(current_sub_path)
+    
+    return sub_paths
+
+def join_paths(paths: list[list[tuple[int, float]]]) -> list[tuple[int, float]]:
+    """
+    Joins multiple sub-paths into a single path.
+    
+    :param paths: List of sub-paths
+    :type paths: list[list[tuple[int, float]]]
+    :return: Joined path
+    :rtype: list[tuple[int, float]]
+    """
+    joined_path = []
+    
+    for sub_path in paths:
+        if joined_path:
+            joined_path.pop()  # Remove last depot to avoid duplication
+        joined_path.extend(sub_path)
+    
+    return joined_path
+
+def optimize_full_path(path: list[tuple[int, float]], problem) -> list[tuple[int, float]]:
+    """
+    Optimizes a single path using beta optimization.
+    
+    :param path: Sequence of (city, gold to pick up at city)
+                        Example: [(0, 0), (20, 1000), (0, 0)]
+        :type path: list[tuple[int, float]]
+    :param problem: Problem instance
+    :type problem: Problem
+    :return: Optimized path
+    """
+    splitted_paths = split_path(path)
+    optimized_paths = [path_optimizer(sub_path, problem) for sub_path in splitted_paths]
+    return join_paths(optimized_paths)
