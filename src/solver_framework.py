@@ -45,7 +45,7 @@ def problem_solver(problem) -> tuple[list[tuple[int, float]], float]:
 
 
 
-def genetic_solver(problem) -> float:
+def genetic_solver(problem) -> tuple[list[tuple[int, float]], float]:
     start_time = time()
     
     # GA parameters (can be increased for better results, e.g., pop=200, gen=500)
@@ -81,7 +81,7 @@ def genetic_solver(problem) -> float:
 
     return optimized_path, optimized_cost
 
-def merge_solver(problem) -> list[tuple[int, float]]:
+def merge_solver(problem) -> tuple[list[tuple[int, float]], float]:
     """
     Main solver function using the optimized merge strategy.
     
