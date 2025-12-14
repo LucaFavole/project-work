@@ -144,11 +144,14 @@ class Problem:
         merge_path, merge_cost = merge_solver(self)
 
         print("Checking feasibility of genetic solution")
-        check_feasibility(self, genetic_path)
+        genetic_feasible = check_feasibility(self, genetic_path)
         print("Checking feasibility of merge solution")
-        check_feasibility(self, merge_path)
+        merge_feasible = check_feasibility(self, merge_path)
 
-        
+        if not genetic_feasible[0] and abs(genetic_feasible[1] - genetic_cost) > 1e-6:
+            print("❌ Genetic solution is not feasible!")
+        if not merge_feasible[0] and abs(merge_feasible[1] - merge_cost) > 1e-6:
+            print("❌ Merge solution is not feasible!")
 
         logging.info(f"Merge Optimizer cost: {merge_cost:.2f}, Genetic Algorithm cost: {genetic_cost:.2f}")
         if merge_cost < genetic_cost:
