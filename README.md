@@ -43,6 +43,55 @@ The merge approach is a constructive heuristic that builds efficient multi-stop 
 - Merging phase: $O(n^2 \times L)$ where $L$ is the average path length
 - Overall: Polynomial time, making it suitable for large instances
 
+## Evolutionary Approach
+
+Evolutionary Approach with Smart DecodingThis project implements a solution based on an **Evolutionary Algorithm (EA)** designed to optimize the collection of gold across a graph with weight-dependent travel costs. The core innovation lies in the separation between the **visitation order** (evolved by the GA) and the **logistics of unloading** (handled by a deterministic greedy decoder).
+
+### Algorithm Overview
+
+Genotype RepresentationThe problem is modeled similarly to a Traveling Salesman Problem (TSP):
+
+* **Genotype:** A permutation of city indices P = [c_1, c_2, ..., c_N].
+* This represents the *intent* to visit cities in a specific sequence, ignoring (at this stage) the constraints of weight and depot returns.
+
+#### Smart Phenotypic Decoder (The Greedy Strategy)
+The genotype is transformed into a feasible path (phenotype) through a constructive heuristic that manages the vehicle's load. The algorithm iterates through the city sequence defined by the genotype and makes a locally optimal decision at each step:
+
+1. **State Tracking:** The agent tracks current location, current accumulated weight, and total cost.
+2. **Decision Step:** For each next target city c~next~ in the genome:
+* **Option A (Direct):** Travel directly from c~current~ to c~next~ carrying the current load.
+* **Option B (Unload):** Return to depot c~current~ to 0 (unload weight), then travel 0 to c~next~ (empty).
+
+
+3. **Cost Evaluation:**
+$$*  Cost~direct~= dist(curr, next) + (dist \cdot \alpha \cdot weight)^\beta $$
+$$*  Cost~split~= Cost(curr \to 0 | weight) + Cost(0 \to next | 0) $$
+
+
+4. **Selection:** If Cost~split~ < Cost~direct~, the agent inserts a depot visit into the path. Otherwise, it proceeds directly.
+#### Heuristic Injection (Initialization)
+To guarantee performance at least equal to a standard baseline, the initial population is not entirely random.
+
+* We inject a single **"Baseline Individual"** whose genome corresponds to visiting cities ordered by their distance from the depot.
+* This ensures the evolutionary search starts with a strong upper bound on fitness, preventing "cold start" issues in complex topologies.
+
+#### Evolutionary Operators
+* **Selection:** Tournament Selection (ex. k=3) to maintain selection pressure while preserving diversity.
+* **Crossover:** Ordered Crossover (OX1), chosen to preserve the relative order of city visits from parents.
+* **Mutation:** Inversion Mutation (2-opt), effectively used to unravel crossing paths in geometric spaces.
+
+#### Key Features
+* **Decoupled Optimization:** The GA optimizes the *topology* (order of cities), while the Smart Decoder optimizes the *capacity* (when to unload).
+* **Distance Caching:** Uses pre-computed All-Pairs Shortest Paths (Dijkstra) stored in a hash map, reducing distance lookups from O(E logV) to O(1) during the evolution loop.
+* **Non-Worse Guarantee:** Thanks to Heuristic Injection, the algorithm is mathematically guaranteed to never perform worse than a distance-sorted baseline strategy.
+* **Adaptive Behavior:** The decoder automatically adapts to changes in \alpha and \beta. If \beta is high (high penalty for weight), the decoder naturally chooses to return to the depot more frequently without changing the GA logic.
+
+#### Complexity
+* **Preprocessing:** O(V $\cdot$ (E + V logV)) for computing the distance cache (executed once).
+* **Phenotype Reconstruction:** O(N) where N is the number of cities (linear scan of the genome).
+* **Evolutionary Step:** O(P $\cdot$ N) per generation, where P is population size.
+* **Overall:** The approach is computationally lightweight, allowing for large populations and many generations even on standard hardware.
+
 ## Beta optimization
 When $\beta > 1$ we can exploit the weights' non linearities to subdivide each round trip in $N$ trips, each one picking $\frac{w}{N}$ (where $w$ is the total gold picked)
 
