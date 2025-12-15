@@ -108,8 +108,46 @@ class Individual:
         return path
 
     def mutate(self, mutation_rate=0.1):
+        """
+        Applica mutazione con probabilità mutation_rate.
+        Supporta Inversion (2-opt) e Swap.
+        """
         if random.random() < mutation_rate:
-            idx1, idx2 = random.sample(range(len(self.genome)), 2)
-            if idx1 > idx2:
-                idx1, idx2 = idx2, idx1
-            self.genome[idx1:idx2+1] = self.genome[idx1:idx2+1][::-1]
+            # 50% probabilità di Inversion, 50% di Swap
+            if random.random() < 0.5:
+                # Inversion Mutation (ottima per TSP geometrici)
+                idx1, idx2 = random.sample(range(len(self.genome)), 2)
+                if idx1 > idx2:
+                    idx1, idx2 = idx2, idx1
+                self.genome[idx1:idx2+1] = self.genome[idx1:idx2+1][::-1]
+            else:
+                # Swap Mutation (ottima per riordinare singole città)
+                idx1, idx2 = random.sample(range(len(self.genome)), 2)
+                self.genome[idx1], self.genome[idx2] = self.genome[idx2], self.genome[idx1]
+
+    def local_optimize(self):
+        """
+        Algoritmo Memetico: Ricerca Locale (Hill Climbing).
+        Prova a scambiare coppie di città adiacenti. Se migliora, tiene il cambiamento.
+        """
+        improved = False
+        current_fitness = self.fitness
+        
+        # Per efficienza, non proviamo tutti gli scambi possibili se il genoma è enorme,
+        # ma facciamo una passata lineare sugli adiacenti.
+        for i in range(len(self.genome) - 1):
+            # Swap adiacente
+            self.genome[i], self.genome[i+1] = self.genome[i+1], self.genome[i]
+            
+            new_fitness = self.evaluate()
+            
+            if new_fitness < current_fitness:
+                current_fitness = new_fitness
+                improved = True
+                # Manteniamo lo scambio (First Improvement)
+            else:
+                # Revert
+                self.genome[i], self.genome[i+1] = self.genome[i+1], self.genome[i]
+                self.fitness = current_fitness # Ripristina fitness precedente
+                
+        return improved

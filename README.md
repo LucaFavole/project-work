@@ -78,7 +78,25 @@ To guarantee performance at least equal to a standard baseline, the initial popu
 #### Evolutionary Operators
 * **Selection:** Tournament Selection (ex. k=3) to maintain selection pressure while preserving diversity.
 * **Crossover:** Ordered Crossover (OX1), chosen to preserve the relative order of city visits from parents.
-* **Mutation:** Inversion Mutation (2-opt), effectively used to unravel crossing paths in geometric spaces.
+* **Mutation:** Hybrid approach combining:
+  * **Inversion (2-opt):** Reverses a subsequence, effective for unraveling crossing paths in geometric spaces.
+  * **Swap:** Exchanges two random cities, useful for fine-tuning the sequence.
+  * *Probability:* 50% Inversion / 50% Swap.
+
+#### Advanced Improvements
+To further enhance convergence and solution quality, we implemented:
+
+1.  **Memetic Algorithm (Local Search):**
+    *   After mutation, each individual undergoes a **Hill Climbing** phase.
+    *   The algorithm attempts to swap adjacent cities in the genome.
+    *   If a swap improves fitness, it is kept (First Improvement strategy).
+    *   This allows the algorithm to refine solutions locally, while the GA handles global exploration.
+
+2.  **Adaptive Mutation (Stagnation Control):**
+    *   The mutation rate is dynamic.
+    *   If the best fitness does not improve for a set number of generations (stagnation), the mutation rate increases (up to 0.8).
+    *   This "Hyper-mutation" helps the population escape local optima.
+    *   Once a new best solution is found, the rate resets to the base value (0.3).
 
 #### Key Features
 * **Decoupled Optimization:** The GA optimizes the *topology* (order of cities), while the Smart Decoder optimizes the *capacity* (when to unload).

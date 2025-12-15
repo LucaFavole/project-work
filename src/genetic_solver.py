@@ -50,7 +50,6 @@ class GeneticSolver:
         
         # --- HEURISTIC INJECTION (Aiuto per Density=1) ---
         # 1. Creiamo un individuo "Dijkstra-like": visita le città dalla più vicina alla più lontana
-        # Questo imita la baseline e garantisce un punto di partenza decente.
         smart_genome = sorted(self.cities, key=lambda c: self.dist_cache[0][c])
         population.append(self.create_individual(smart_genome))
         
@@ -60,10 +59,29 @@ class GeneticSolver:
             
         best_overall = min(population, key=lambda x: x.fitness)
         
+        # Variabili per Mutazione Adattiva
+        stagnation_counter = 0
+        current_best_fitness = best_overall.fitness
+        base_mutation_rate = self.mutation_rate
+        
         for g in range(self.generations):
             population.sort(key=lambda x: x.fitness)
+            
+            # Elitismo: salviamo il migliore assoluto
             if population[0].fitness < best_overall.fitness:
                 best_overall = copy.deepcopy(population[0])
+                stagnation_counter = 0
+                self.mutation_rate = base_mutation_rate # Reset mutation rate
+                current_best_fitness = population[0].fitness
+            else:
+                stagnation_counter += 1
+            
+            # --- ADAPTIVE MUTATION ---
+            # Se siamo bloccati da troppo tempo, aumentiamo la mutazione per uscire dal minimo locale
+            if stagnation_counter > 15:
+                self.mutation_rate = min(0.8, base_mutation_rate * 3) # Hyper-mutation
+            elif stagnation_counter > 5:
+                self.mutation_rate = min(0.5, base_mutation_rate * 1.5)
 
             new_population = population[:self.elite_size]
             
@@ -74,8 +92,18 @@ class GeneticSolver:
                 parent2 = min(candidates, key=lambda x: x.fitness)
                 
                 child = self.crossover(parent1, parent2)
+                
                 child.mutate(self.mutation_rate)
-                child.evaluate()
+                
+                # --- MEMETIC ALGORITHM (Local Search) ---
+                # Applichiamo una veloce ottimizzazione locale
+                child.local_optimize()
+                
+                # Se local_optimize non ha chiamato evaluate (nessun miglioramento), 
+                # assicuriamoci che la fitness sia valida, altrimenti evaluate() è già stato chiamato
+                if child.fitness == float('inf'):
+                    child.evaluate()
+                    
                 new_population.append(child)
             
             population = new_population
