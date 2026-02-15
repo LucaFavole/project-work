@@ -1,14 +1,15 @@
 """
 Benchmark script to test multiple problem instances in parallel
 """
-from s339239 import Problem
+
 from src.solver_framework import genetic_solver, merge_solver, ils_solver
 from src.utils import check_feasibility
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed, ThreadPoolExecutor
 from time import time
 import json
 import logging
 from tqdm import tqdm
+from s339239 import Problem
 
 def solve_single_instance(params):
     """
@@ -31,11 +32,18 @@ def solve_single_instance(params):
     problem = Problem(num_cities=n, alpha=alpha, beta=beta, seed=seed, density=density)
     
     # Dictionary of solvers
-    solvers = {
-        'genetic': genetic_solver,
-        'merge': merge_solver,
-        'ILS': ils_solver,
-    }
+    if problem.graph.number_of_nodes() <= 100:
+        solvers = {
+            'genetic': genetic_solver,
+            'merge': merge_solver,
+            'ILS': ils_solver,
+        }
+    else:
+        solvers = {
+            'merge': merge_solver,
+            'genetic': genetic_solver,
+        }
+
     
     # Test each solver
     results = {}
@@ -114,7 +122,7 @@ def benchmark_parallel(instances, max_workers=4):
             try:
                 result = future.result()
                 # Use string key for JSON serialization
-                key = f"n={params['n']}_alpha={params['alpha']}_beta={params['beta']}_seed={params['seed']}"
+                key = f"n={params['n']}_alpha={params['alpha']}_beta={params['beta']}_density={params.get('density', 0.5)}_seed={params['seed']}"
                 results[key] = result
                 
                 logging.info(f"✓ Completed: {key}")
@@ -139,10 +147,16 @@ def generate_test_instances():
     instances = []
     
     # Example: test different combinations
-    n_cities = [10, 50, 100, 1000]
-    alpha_values = [0.0, 1.0, 2.0, 4.0]
-    beta_values = [0.5, 1, 2, 4]
+    n_cities = [10, 100, 1000]
+    alpha_values = [0.0, 1.0, 2.0]
+    beta_values = [0.5, 1.0, 2.0]
     density_values = [0.2, 0.5, 1.0]
+
+    # n_cities = [1000]
+    # alpha_values = [1.0]
+    # beta_values = [0.5, 1.0, 2.0]
+    # density_values = [0.2, 0.5, 1.0]
+
     
     for n, alpha, beta, density in product(n_cities, alpha_values, beta_values, density_values):
         instances.append({
@@ -167,7 +181,7 @@ def benchmark():
     # Run benchmark
     print("\nRunning benchmark...")
     start_time = time()
-    results = benchmark_parallel(instances, max_workers=8)
+    results = benchmark_parallel(instances, max_workers=3)
     total_time = time() - start_time
     
     print(f"\nBenchmark completed in {total_time:.2f}s")
@@ -290,15 +304,19 @@ def latex_results():
     with open('benchmark_results.tex', 'w') as f:
         f.write(df.to_latex(index=False, float_format="%.2f"))
 
+import sys
 
 if __name__ == '__main__':
+    sys.path.append('..')
+
+
     # Configure logging
     logging.basicConfig(
         level=logging.WARNING,
         format='%(asctime)s - %(levelname)s - %(message)s'
     )
 
-    # benchmark()      # Uncomment to run benchmark
-    print_results('benchmark_results.json')
-    csv_report('benchmark_results.json')  # Uncomment to convert results to CSV
+    benchmark()      # Uncomment to run benchmark
+    # print_results('benchmark_results.json')
+    # csv_report('benchmark_results.json')  # Uncomment to convert results to CSV
     # latex_results()  # Uncomment to convert CSV results to LaTeX
