@@ -1,182 +1,77 @@
+"""Solver entry point.
+
+Drives the `goldcollector` genetic-algorithm solver and applies the project's
+beta optimizer (`src/beta_optimizer.py`) for super-linear penalties. Exposes the
+same `problem_solver(problem) -> (path, cost)` contract the rest of the project
+(`s339239.py`) relies on, so nothing downstream changed.
+
+This replaces the previous multi-strategy framework (parallel Genetic / Merge /
+ILS). The genetic solver with the beta optimizer matched or beat that ensemble
+on the benchmark while running an order of magnitude faster -- see `bench/`.
+"""
+
 import logging
-import multiprocessing
-from concurrent.futures import ProcessPoolExecutor, as_completed, ThreadPoolExecutor
 from time import time
 
+import networkx as nx
+
 from Problem import Problem
-from src.beta_optimizer import path_optimizer
-from src.genetic_solver import GeneticSolver
-from src.ils_solver import IteratedLocalSearchSolver
-from src.merge_optimizer import merge_strategy_optimized
-from src.utils import check_feasibility, optimize_full_path, path_cost
+from src.goldcollector import GAConfig, GeneticSolver, Instance
+
+
+def _config_for(n_nodes: int) -> GAConfig:
+    """Population / generations scaled by instance size."""
+    if n_nodes > 500:
+        return GAConfig(pop_size=50, generations=30)
+    if n_nodes > 100:
+        return GAConfig(pop_size=70, generations=40)
+    return GAConfig(pop_size=100, generations=60)
+
+
+def _baseline_walk(problem: Problem) -> list[tuple[int, float]]:
+    """The per-city round-trip baseline as an explicit feasible path.
+
+    Its `path_cost` equals `problem.baseline()`; used as a safety net so the
+    solver is never worse than the trivial baseline (notably for beta = 1, where
+    the penalty is linear and the baseline is already near optimal).
+    """
+    graph = problem.graph
+    gold = nx.get_node_attributes(graph, "gold")
+    paths = nx.single_source_dijkstra_path(graph, source=0, weight="dist")
+    walk = [(0, 0.0)]
+    for city in graph.nodes:
+        if city == 0:
+            continue
+        out = paths[city]
+        for node in out[1:-1]:
+            walk.append((node, 0.0))
+        walk.append((city, gold[city]))          # collect at the city
+        for node in reversed(out[:-1]):           # return to the depot
+            walk.append((node, 0.0))
+    return walk
 
 
 def problem_solver(problem: Problem) -> tuple[list[tuple[int, float]], float]:
+    """Solve `problem` and return (path, cost).
+
+    `path` is a list of (city, gold_picked_up) steps; the beta optimizer is
+    applied automatically when beta > 1. `cost` is `problem.path_cost(path)`.
+    Falls back to the baseline path if the GA fails to beat it.
     """
-    Multiprocess solver that runs multiple strategies in parallel and selects the best solution.
-    """
+    start = time()
+    instance = Instance.from_problem(problem)
+    solution = GeneticSolver(instance, _config_for(problem.graph.number_of_nodes())).solve()
 
-    # Dictionary of available solvers - easily extensible for future solvers
-    if problem.graph.number_of_nodes() < 100:
-        solvers = {
-            'Genetic': genetic_solver,
-            'Merge': merge_solver,
-            'ILS': ils_solver,
-        }
-    else:
-        # For larger instances, use all solvers with adapted parameters
-        solvers = {
-            'Genetic': genetic_solver,
-            'Merge': merge_solver,
-        }
+    path = solution.walk
+    cost = problem.path_cost(path)
 
-    # Run all solvers in parallel
-    results = {}
+    baseline_path = _baseline_walk(problem)
+    baseline_cost = problem.path_cost(baseline_path)
+    if baseline_cost < cost:
+        logging.info(f"goldcollector: GA {cost:.2f} worse than baseline {baseline_cost:.2f}; using baseline")
+        path, cost = baseline_path, baseline_cost
 
-    # IF ALREADY USING MULTIPROCESSING IN SOLVERS, CONSIDER USING ThreadPoolExecutor INSTEAD
-    with ProcessPoolExecutor(max_workers=min(multiprocessing.cpu_count(), len(solvers))) as executor:
-        futures = {executor.submit(solver_func, problem): name
-                   for name, solver_func in solvers.items()}
-
-        for future in as_completed(futures):
-            solver_name = futures[future]
-            path, cost = future.result()
-            results[solver_name] = (path, cost)
-
-    # Log all solver costs
-    costs_summary = " | ".join(
-        [f"{name}: {cost:.2f} | feasible: {check_feasibility(problem, path)}" for name, (path, cost) in
-         results.items()])
-    logging.debug(f"All solver costs: {costs_summary}")
-
-    # Select best solution (only feasible ones)
-    # Should not happen that no solver finds a feasible solution, but just in case
-    feasible_results = {name: (path, cost) for name, (path, cost) in results.items() 
-                        if check_feasibility(problem, path)}
-
-    if feasible_results:
-        best_solver = min(feasible_results.items(), key=lambda x: x[1][1])
-        best_name, (best_path, best_cost) = best_solver
-        logging.info(f"Selected {best_name} solution with cost: {best_cost:.2f}")
-    else:
-        # Fallback to best infeasible solution if none are feasible
-        best_solver = min(results.items(), key=lambda x: x[1][1])
-        best_name, (best_path, best_cost) = best_solver
-        logging.warning(f"No feasible solution found. Using best infeasible solution from {best_name} with cost: {best_cost:.2f}")
-
-    return best_path, best_cost
-
-
-
-def genetic_solver(problem: Problem) -> tuple[list[tuple[int, float]], float]:
-
-    start_time = time()
-
-    n_nodes = problem.graph.number_of_nodes()
-
-    # GA parameters scaled by instance size
-    if n_nodes > 500:
-        POPULATION_SIZE = 50
-        GENERATIONS = 30
-        MUTATION_RATE = 0.3
-        ELITE_SIZE = 5
-    elif n_nodes > 100:
-        POPULATION_SIZE = 70
-        GENERATIONS = 40
-        MUTATION_RATE = 0.3
-        ELITE_SIZE = 3
-    elif n_nodes > 50:
-        POPULATION_SIZE = 100
-        GENERATIONS = 50
-        MUTATION_RATE = 0.3
-        ELITE_SIZE = 4
-    else:
-        POPULATION_SIZE = 100
-        GENERATIONS = 100
-        MUTATION_RATE = 0.2
-        ELITE_SIZE = 10
-
-
-    # Initialize and run the solver
-    solver = GeneticSolver(
-        problem=problem,
-        pop_size=POPULATION_SIZE,
-        generations=GENERATIONS,
-        mutation_rate=MUTATION_RATE,
-        elite_size=ELITE_SIZE
+    logging.info(
+        f"goldcollector: cost {cost:.2f} | steps {len(path)} | {time() - start:.2f}s"
     )
-
-    best_individual = solver.evolve()
-
-    # Extract final solution (path and cost)
-    path = best_individual.rebuild_phenotype()
-    cost = best_individual.fitness
-
-    path = [(0, 0.0)] + path  # Ensure depot at start
-    # Apply beta-optimization to full genetic path
-    optimized_path = optimize_full_path(path, problem)
-    optimized_cost = path_cost(problem, optimized_path)
-
-    elapsed_time = time() - start_time
-    logging.info(
-        f"Genetic Solver: pop={POPULATION_SIZE}, gen={GENERATIONS} | Initial cost: {cost:.2f} → Optimized cost: {optimized_cost:.2f} | Path length: {len(optimized_path)} steps | Time: {elapsed_time:.2f}s")
-    logging.debug(f"Optimized path: {optimized_path}")
-
-    return optimized_path, optimized_cost
-
-
-def merge_solver(problem) -> tuple[list[tuple[int, float]], float]:
-    """
-    Main solver function using the optimized merge strategy.
-    
-    Returns:
-        Final path as a list of (city, gold_picked) tuples.
-    """
-    start_time = time()
-    merged_paths = merge_strategy_optimized(problem)
-    optimized_paths = [path_optimizer(trip, problem) for trip in merged_paths] if problem._beta > 1 else merged_paths
-
-    # Flatten all trips into a single path
-    final_path = []
-    for trip in optimized_paths:
-        final_path.extend(trip[:-1])  # Exclude last depot to avoid duplication
-    final_path.append((0, 0.0))  # End at depot
-
-    cost = path_cost(problem, final_path)
-    elapsed_time = time() - start_time
-
-    logging.info(
-        f"Merge Solver: β={problem._beta:.2f} | Trips: {len(optimized_paths)} | Cost: {cost:.2f} | Path length: {len(final_path)} steps | Time: {elapsed_time:.2f}s")
-    logging.debug(f"Final path: {final_path}")
-
-    return final_path, cost
-
-
-
-def ils_solver(problem):
-
-    if problem.graph.number_of_nodes() > 100:
-        return [], float('inf')  # Skip ILS for larger instances due to time constraints
-    start_time = time()
-
-    max_iter = 60
-    max_duration = 400
-
-    # Heuristic tuning for harder instances (High Beta)
-    if problem.beta > 1.5:
-        max_iter = 30
-        max_duration = 300
-
-    if problem.graph.number_of_nodes() > 100:
-        max_iter = 20
-        max_duration = 300
-
-    solver = IteratedLocalSearchSolver(problem, max_iterations=max_iter, max_time=max_duration)
-    path, cost = solver.solve()
-
-    path = optimize_full_path(path, problem)
-    cost = path_cost(problem, path)
-    elapsed = time() - start_time
-    logging.info(f"ILS Solver: iter={max_iter} | Cost: {cost:.2f} | Steps: {len(path)} | Time: {elapsed:.2f}s")
-
     return path, cost
