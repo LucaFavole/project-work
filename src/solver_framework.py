@@ -51,16 +51,19 @@ def _baseline_walk(problem: Problem) -> list[tuple[int, float]]:
     return walk
 
 
-def problem_solver(problem: Problem) -> tuple[list[tuple[int, float]], float]:
+def problem_solver(problem: Problem, optimize: bool = True) -> tuple[list[tuple[int, float]], float]:
     """Solve `problem` and return (path, cost).
 
     `path` is a list of (city, gold_picked_up) steps; the beta optimizer is
-    applied automatically when beta > 1. `cost` is `problem.path_cost(path)`.
-    Falls back to the baseline path if the GA fails to beat it.
+    applied automatically when beta > 1 (unless `optimize=False`). `cost` is
+    `problem.path_cost(path)`. Falls back to the baseline path if the GA fails
+    to beat it.
     """
     start = time()
     instance = Instance.from_problem(problem)
-    solution = GeneticSolver(instance, _config_for(problem.graph.number_of_nodes())).solve()
+    solution = GeneticSolver(
+        instance, _config_for(problem.graph.number_of_nodes()), optimize=optimize
+    ).solve()
 
     path = solution.walk
     cost = problem.path_cost(path)
