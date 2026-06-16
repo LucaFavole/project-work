@@ -1,6 +1,12 @@
 """Subprocess runner for THIS project (project-work-mio) solver.
 
-    python _run_mio.py <project_work_mio_dir> '<json config>'  ->  JSON {baseline, cost, time}
+Runs a single GA search and reports BOTH the beta-optimized and the
+non-optimized cost (beta-opt is only post-processing, so one search yields
+both). Optional cfg keys: "gen"/"pop" override the GA budget; otherwise the
+size-scaled default is used.
+
+    python _run_mio.py <dir> '{"n":1000,"d":0.2,"a":1,"b":2,"seed":42,"gen":1000}'
+      -> JSON {baseline, noopt_cost, opt_cost, time}
 """
 
 import json
@@ -17,16 +23,28 @@ def main():
     os.chdir(target)
 
     from Problem import Problem
-    from src.solver_framework import problem_solver
+    from src.goldcollector import GAConfig, GeneticSolver, Instance
+    from src.solver_framework import _baseline_walk, _config_for
 
     p = Problem(num_cities=cfg["n"], density=cfg["d"], alpha=cfg["a"], beta=cfg["b"], seed=42)
     baseline = p.baseline()
 
+    gen = cfg.get("gen")
+    config = (GAConfig(pop_size=cfg.get("pop", 100), generations=gen)
+              if gen else _config_for(p.graph.number_of_nodes()))
+
     t0 = time.perf_counter()
-    _path, cost = problem_solver(p, optimize=cfg.get("optimize", True))
+    instance = Instance.from_problem(p)
+    sol = GeneticSolver(instance, config, optimize=True).solve()
     elapsed = time.perf_counter() - t0
 
-    print(json.dumps({"baseline": baseline, "cost": cost, "time": elapsed}))
+    baseline_cost = p.path_cost(_baseline_walk(p))  # guard: never worse than baseline
+    print(json.dumps({
+        "baseline": baseline,
+        "noopt_cost": min(sol.raw_cost, baseline_cost),
+        "opt_cost": min(sol.cost, baseline_cost),
+        "time": elapsed,
+    }))
 
 
 if __name__ == "__main__":

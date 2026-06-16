@@ -53,8 +53,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--configs", type=str, default=None)
     ap.add_argument("--tag", type=str, default="")
+    ap.add_argument("--mio-gen", type=int, default=None, help="override mio GA generations")
+    ap.add_argument("--mio-pop", type=int, default=100, help="mio GA population when --mio-gen is set")
     args = ap.parse_args()
     configs = json.loads(args.configs) if args.configs else DEFAULT_CONFIGS
+    mio_extra = {"gen": args.mio_gen, "pop": args.mio_pop} if args.mio_gen else {}
 
     if not os.path.isdir(PW):
         sys.exit(f"original project-work not found at {PW}")
@@ -68,8 +71,9 @@ def main():
         print(f"  n={n} d={d} α={a} β={b} ...", flush=True)
         pw = run("_run_pw.py", PW, cfg)
         merge = run("_run_merge.py", MERGE_WT, cfg) if have_merge else None
-        mio_off = run("_run_mio.py", MIO, {**cfg, "optimize": False})
-        mio_on = run("_run_mio.py", MIO, {**cfg, "optimize": True})
+        mio = run("_run_mio.py", MIO, {**cfg, **mio_extra})  # one solve, both modes
+        mio_off = {"cost": mio["noopt_cost"], "time": mio["time"]}
+        mio_on = {"cost": mio["opt_cost"], "time": mio["time"]}
         base = pw["baseline"]
         rows.append({"n": n, "d": d, "alpha": a, "beta": b, "baseline": base,
                      "pw": pw, "merge": merge, "mio_off": mio_off, "mio_on": mio_on})
@@ -86,13 +90,15 @@ def main():
             f"| {cell(base, r['pw'])} | {cell(base, r['merge'])} "
             f"| {cell(base, r['mio_off'])} | {cell(base, r['mio_on'])} |"
         )
+    mio_note = f"gen={args.mio_gen}, pop={args.mio_pop}" if args.mio_gen else "size-scaled default"
     md = (
         "# project-work-mio vs. original project-work vs. Merge approach\n\n"
         "Same instances and seeds. **PW** = original project-work GA (gen=1000); "
         "**Merge** = the original constructive Merge heuristic + beta optimizer; "
         "**mio noβopt** = this project's GA with the beta optimizer off; "
         "**mio βopt** = this project's full pipeline. Δ = improvement over the "
-        "per-city baseline; t = wall-clock solve time.\n\n" + header + "\n".join(lines) + "\n"
+        f"per-city baseline; t = wall-clock solve time. mio GA budget: {mio_note}.\n\n"
+        + header + "\n".join(lines) + "\n"
     )
     out_md = os.path.join(HERE, f"PROJECTS_COMPARISON{args.tag}.md")
     with open(out_md, "w", encoding="utf-8") as f:
