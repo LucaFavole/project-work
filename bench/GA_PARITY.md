@@ -23,8 +23,22 @@ constructive solver, shown for reference. Reproduce: `python bench/verify_all.py
 | strange alpha=0 (pure dist) | 8.10 / 1.71s | 8.10 / 0.90s | EXACT | 8.10 | 22.24 / 0.00s |
 | strange sub-linear beta=0.5 | 494.79 / 2.36s | 494.79 / 0.99s | EXACT | 494.79 | 577.20 / 0.01s |
 
-**Output: all EXACT** — mio's GA is identical to the original's on every normal
-and edge-case instance.
+### n=1000 (precompute-bound; pop=60, gen=100)
+
+| instance | project-work GA | mio GA (raw) | match | mio GA (βopt) | Merge |
+|---|--:|--:|:--:|--:|--:|
+| n=1000 d=0.2 a1 b1 | 195386.47 / 575.79s | 195386.47 / 264.21s | EXACT | 195386.47 | 195226.59 / 2.49s |
+| n=1000 d=0.2 a1 b2 | 31006170.51 / 296.03s | 31006170.51 / 213.03s | EXACT | 263655.14 | 227344.90 / 6.36s |
+| n=1000 d=1.0 a2 b2 | 210170985.93 / 895.94s | 210170985.93 / 835.51s | EXACT | 683360.89 | 423534.87 / 16.18s |
+| n=1000 d=0.2 a1 b4 | 1391287758571.33 / 223.12s | 1391287758571.33 / 179.08s | EXACT | 193265.65 | 162239.29 / 4.86s |
+| n=1000 d=0.5 a0 b2 | 397.35 / 412.70s | 397.35 / 379.66s | EXACT | 397.35 | 635.07 / 2.21s |
+
+Parity holds at n=1000 as well (run with `python bench/verify_all.py --big`).
+Some n=1000 times may be inflated if the machine sleeps during the long run;
+the costs are deterministic and reliable.
+
+**Output: all EXACT** — mio's GA is identical to the original's on every normal,
+edge-case and n=1000 instance.
 
 **Timing:**
 

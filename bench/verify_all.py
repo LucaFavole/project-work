@@ -40,6 +40,15 @@ CONFIGS = [
     ("strange sub-linear beta=0.5",40, 0.5, 1, 0.5, 19, 10),
 ]
 
+# n=1000 set (slow: precompute-bound). Run with --big.
+CONFIGS_1000 = [
+    ("n=1000 d=0.2 a1 b1", 1000, 0.2, 1, 1, 42, 0),
+    ("n=1000 d=0.2 a1 b2", 1000, 0.2, 1, 2, 42, 1),
+    ("n=1000 d=1.0 a2 b2", 1000, 1.0, 2, 2, 42, 2),
+    ("n=1000 d=0.2 a1 b4", 1000, 0.2, 1, 4, 1, 5),
+    ("n=1000 d=0.5 a0 b2", 1000, 0.5, 0, 2, 17, 9),
+]
+
 
 def run(runner, target, cfg):
     proc = subprocess.run(
@@ -51,14 +60,14 @@ def run(runner, target, cfg):
     return json.loads(proc.stdout.strip().splitlines()[-1])
 
 
-def main():
+def main(configs=CONFIGS):
     have_merge = os.path.isdir(WT)
     cols = (f"{'instance':28} {'PW: cost / t':>22} {'mio raw: cost / t':>22} {'match':>6} "
             f"{'mio βopt: cost':>16} {'Merge: cost / t':>20}")
     print(cols)
     print("-" * len(cols))
     rows, all_match = [], True
-    for label, n, d, a, b, pseed, gaseed in CONFIGS:
+    for label, n, d, a, b, pseed, gaseed in configs:
         cfg = {"n": n, "d": d, "a": a, "b": b, "pseed": pseed, "gaseed": gaseed, "pop": POP, "gen": GEN}
         pw = run("_verify_pw.py", PW, cfg)
         mio = run("_verify_mio.py", MIO, cfg)
@@ -81,4 +90,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(CONFIGS_1000 if "--big" in sys.argv else CONFIGS)
