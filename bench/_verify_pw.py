@@ -16,11 +16,12 @@ def main():
     from src.ga import GeneticAlgorithm
     from src.utils import compute_distance_matrices
 
-    p = Problem(num_cities=cfg["n"], density=cfg["d"], alpha=cfg["a"], beta=cfg["b"], seed=42)
+    p = Problem(num_cities=cfg["n"], density=cfg["d"], alpha=cfg["a"], beta=cfg["b"],
+                seed=cfg.get("pseed", 42))
     dm, bm, _ = compute_distance_matrices(p)
     ga = GeneticAlgorithm(p, dm, bm, pop_size=cfg["pop"], generations=cfg["gen"])
 
-    random.seed(cfg["seed"])  # seed the global RNG the GA uses, right before run()
+    random.seed(cfg["gaseed"])  # seed the global RNG the GA uses, right before run()
     _path, cost = ga.run()
     print(json.dumps({"cost": cost}))
 

@@ -14,11 +14,12 @@ def main():
     from Problem import Problem
     from src.goldcollector import GAConfig, GeneticSolver, Instance
 
-    p = Problem(num_cities=cfg["n"], density=cfg["d"], alpha=cfg["a"], beta=cfg["b"], seed=42)
+    p = Problem(num_cities=cfg["n"], density=cfg["d"], alpha=cfg["a"], beta=cfg["b"],
+                seed=cfg.get("pseed", 42))
     instance = Instance.from_problem(p)
     sol = GeneticSolver(
         instance,
-        GAConfig(pop_size=cfg["pop"], generations=cfg["gen"], seed=cfg["seed"]),
+        GAConfig(pop_size=cfg["pop"], generations=cfg["gen"], seed=cfg["gaseed"]),
         optimize=False,
     ).solve()
     print(json.dumps({"cost": sol.cost}))
