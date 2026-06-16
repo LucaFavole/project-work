@@ -1,13 +1,8 @@
 """Solver entry point.
 
-Drives the `goldcollector` genetic-algorithm solver and applies the project's
-beta optimizer (`src/beta_optimizer.py`) for super-linear penalties. Exposes the
-same `problem_solver(problem) -> (path, cost)` contract the rest of the project
-(`s339239.py`) relies on, so nothing downstream changed.
-
-This replaces the previous multi-strategy framework (parallel Genetic / Merge /
-ILS). The genetic solver with the beta optimizer matched or beat that ensemble
-on the benchmark while running an order of magnitude faster -- see `bench/`.
+Drives the `goldcollector` genetic-algorithm solver and applies the beta
+optimizer (`src/beta_optimizer.py`) for super-linear penalties. Exposes the
+`problem_solver(problem) -> (path, cost)` contract that `s339239.py` relies on.
 """
 
 import logging
@@ -20,12 +15,8 @@ from src.goldcollector import GAConfig, GeneticSolver, Instance
 
 
 def _config_for(n_nodes: int) -> GAConfig:
-    """Population / generations scaled by instance size."""
-    if n_nodes > 500:
-        return GAConfig(pop_size=50, generations=30)
-    if n_nodes > 100:
-        return GAConfig(pop_size=70, generations=40)
-    return GAConfig(pop_size=100, generations=60)
+    """Fixed population / generations regardless of instance size."""
+    return GAConfig(pop_size=100, generations=1000)
 
 
 def _baseline_walk(problem: Problem) -> list[tuple[int, float]]:

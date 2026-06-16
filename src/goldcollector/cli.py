@@ -23,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--seed", type=int, default=42, help="instance generation seed")
     p.add_argument("--ga-seed", type=int, default=0, help="genetic algorithm seed")
     p.add_argument("--pop", type=int, default=100)
-    p.add_argument("--generations", type=int, default=200)
+    p.add_argument("--generations", type=int, default=1000)
     p.add_argument("--no-optimize", action="store_true", help="disable beta optimization")
     p.add_argument("--check", action="store_true", help="verify solution feasibility")
     return p

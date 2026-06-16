@@ -20,8 +20,8 @@ from .operators import (
 
 @dataclass
 class GAConfig:
-    pop_size: int = 60
-    generations: int = 200
+    pop_size: int = 100
+    generations: int = 1000
     elite_frac: float = 0.05
     seed: int = 0
 

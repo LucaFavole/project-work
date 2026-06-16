@@ -1,8 +1,7 @@
 """Genetic-algorithm solver, composed from the cost / decoder / operator pieces.
 
-Same algorithm as the naive baseline (so results are bit-for-bit reproducible),
-but now assembled from swappable components: the cost backend and operators are
-injected rather than hard-coded.
+Assembled from swappable components: the cost backend and operators are injected
+rather than hard-coded.
 """
 
 from __future__ import annotations

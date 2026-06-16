@@ -24,8 +24,7 @@ def decode(order, cost, gold) -> list[int]:
                   - cost.leg_cost(current, DEPOT, load))
         # ...versus serving `city` on a dedicated depot->city->depot trip.
         # (The cost of closing the current tour is common to both branches, so it
-        # is excluded here to keep the comparison consistent -- matching the
-        # original solver's decoder.)
+        # is excluded here to keep the comparison consistent.)
         reset = (cost.leg_cost(DEPOT, city, 0.0)
                  + cost.leg_cost(city, DEPOT, g))
         if extend <= reset:

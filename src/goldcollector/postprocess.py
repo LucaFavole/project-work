@@ -13,9 +13,9 @@ closed form for the optimal number of passes:
 
     N_opt = ( (beta - 1) * W * alpha**beta / S ) ** (1 / beta)
 
-The actual split is delegated to the project's `src/beta_optimizer.path_optimizer`
-(kept verbatim), applied per tour. This module only handles tour splitting,
-expansion and scoring around it. It is a post-processing step on a finished
+The actual split is delegated to `src/beta_optimizer.path_optimizer`, applied per
+tour. This module only handles tour splitting, expansion and scoring around it.
+It is a post-processing step on a finished
 solution; it does not change the search. The relaxation it exploits is that a
 city's gold may be collected across several passes (fractional pickups), which
 the assignment's cost model permits.

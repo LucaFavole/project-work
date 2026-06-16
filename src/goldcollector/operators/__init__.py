@@ -18,5 +18,5 @@ __all__ = [
 
 
 def default_mutation() -> ProbabilisticMutation:
-    """The original mutation policy: 20% insertion, 20% inversion."""
+    """Default mutation policy: 20% insertion, 20% inversion."""
     return ProbabilisticMutation([(0.2, InsertionMutation()), (0.2, InversionMutation())])

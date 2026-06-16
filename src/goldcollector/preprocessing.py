@@ -11,9 +11,8 @@ With these, a leg cost collapses to O(1):
     leg(u, v, load) = dist[u, v] + (alpha * load) ** beta * penalty[u, v]
 
 which is algebraically identical to summing `d + (alpha * d * load) ** beta`
-over the leg's edges, because the load is constant along a leg. This is the same
-decomposition the original solver used, and it removes the per-query shortest-
-path walk that made the naive backend slow.
+over the leg's edges, because the load is constant along a leg. Precomputing it
+removes the per-query shortest-path walk that the edge-walk backend pays.
 """
 
 from __future__ import annotations

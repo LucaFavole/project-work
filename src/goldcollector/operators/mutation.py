@@ -27,8 +27,7 @@ class ProbabilisticMutation:
 
     `choices` is a list of (probability, operator). With
     [(0.2, Insertion), (0.2, Inversion)] there is a 20% chance of insertion, a
-    20% chance of inversion, and a 60% chance of no mutation -- one RNG draw,
-    exactly matching the original combined operator.
+    20% chance of inversion, and a 60% chance of no mutation -- in one RNG draw.
     """
 
     choices: list
