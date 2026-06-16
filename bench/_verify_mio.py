@@ -1,4 +1,9 @@
-"""Seeded mio GA runner, beta optimizer off (for parity verification)."""
+"""Seeded mio GA runner (for parity verification).
+
+One solve reports both the raw GA cost (beta optimizer OFF -- this is what must
+match project-work bit-for-bit) and the beta-optimized cost (what mio actually
+delivers). Beta-opt is post-processing, so it shares the same GA search.
+"""
 
 import json
 import os
@@ -20,9 +25,9 @@ def main():
     sol = GeneticSolver(
         instance,
         GAConfig(pop_size=cfg["pop"], generations=cfg["gen"], seed=cfg["gaseed"]),
-        optimize=False,
+        optimize=True,
     ).solve()
-    print(json.dumps({"cost": sol.cost}))
+    print(json.dumps({"raw_cost": sol.raw_cost, "opt_cost": sol.cost}))
 
 
 if __name__ == "__main__":

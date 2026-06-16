@@ -41,38 +41,42 @@ CONFIGS = [
 ]
 
 
-def run(runner, target, cfg):
+def run(runner, target, cfg, key="cost"):
     proc = subprocess.run(
         [sys.executable, os.path.join(HERE, runner), target, json.dumps(cfg)],
         capture_output=True, text=True,
     )
     if proc.returncode != 0:
         return None, proc.stderr.strip().splitlines()[-1] if proc.stderr.strip() else "error"
-    return json.loads(proc.stdout.strip().splitlines()[-1])["cost"], None
+    data = json.loads(proc.stdout.strip().splitlines()[-1])
+    return (data[key] if isinstance(key, str) else {k: data[k] for k in key}), None
 
 
 def main():
     have_merge = os.path.isdir(WT)
-    print(f"{'instance':30} {'PW GA':>16} {'mio GA':>16} {'match':>7} {'Merge':>16}")
-    print("-" * 90)
+    hdr = f"{'instance':30} {'PW GA':>16} {'mio GA(raw)':>16} {'match':>6} {'mio GA(βopt)':>16} {'Merge':>14}"
+    print(hdr)
+    print("-" * len(hdr))
     all_match = True
     for label, n, d, a, b, pseed, gaseed in CONFIGS:
         cfg = {"n": n, "d": d, "a": a, "b": b, "pseed": pseed, "gaseed": gaseed, "pop": POP, "gen": GEN}
         pw, e1 = run("_verify_pw.py", PW, cfg)
-        mio, e2 = run("_verify_mio.py", MIO, cfg)
-        merge, e3 = (run("_verify_merge.py", WT, cfg) if have_merge else (None, "no wt"))
+        mio, e2 = run("_verify_mio.py", MIO, cfg, key=("raw_cost", "opt_cost"))
+        merge, _ = (run("_verify_merge.py", WT, cfg) if have_merge else (None, "no wt"))
 
         if pw is None or mio is None:
-            print(f"{label:30} {'ERR':>16} {'ERR':>16} {'-':>7}   {e1 or e2}")
+            print(f"{label:30} {'ERR':>16} {'ERR':>16} {'-':>6}   {e1 or e2}")
             all_match = False
             continue
-        match = abs(pw - mio) <= 1e-6 * max(1.0, abs(pw))
+        raw, opt = mio["raw_cost"], mio["opt_cost"]
+        match = abs(pw - raw) <= 1e-6 * max(1.0, abs(pw))
         all_match = all_match and match
         merge_s = f"{merge:.4f}" if merge is not None else "n/a"
-        print(f"{label:30} {pw:16.4f} {mio:16.4f} {('EXACT' if match else 'DIFF'):>7} {merge_s:>16}")
+        print(f"{label:30} {pw:16.4f} {raw:16.4f} {('EXACT' if match else 'DIFF'):>6} "
+              f"{opt:16.4f} {merge_s:>14}")
 
-    print("-" * 90)
-    print(f"GA parity (mio == project-work): {'ALL EXACT' if all_match else 'MISMATCH FOUND'}")
+    print("-" * len(hdr))
+    print(f"GA parity (mio raw == project-work): {'ALL EXACT' if all_match else 'MISMATCH FOUND'}")
 
 
 if __name__ == "__main__":
