@@ -1,9 +1,10 @@
-"""Seeded project-work GA runner (for parity verification)."""
+"""Seeded project-work GA runner (for parity verification). Reports cost and time."""
 
 import json
 import os
 import random
 import sys
+import time
 
 
 def main():
@@ -18,12 +19,15 @@ def main():
 
     p = Problem(num_cities=cfg["n"], density=cfg["d"], alpha=cfg["a"], beta=cfg["b"],
                 seed=cfg.get("pseed", 42))
+
+    random.seed(cfg["gaseed"])  # nothing below consumes the global RNG before run()
+    t0 = time.perf_counter()
     dm, bm, _ = compute_distance_matrices(p)
     ga = GeneticAlgorithm(p, dm, bm, pop_size=cfg["pop"], generations=cfg["gen"])
-
-    random.seed(cfg["gaseed"])  # seed the global RNG the GA uses, right before run()
     _path, cost = ga.run()
-    print(json.dumps({"cost": cost}))
+    elapsed = time.perf_counter() - t0
+
+    print(json.dumps({"cost": cost, "time": elapsed}))
 
 
 if __name__ == "__main__":

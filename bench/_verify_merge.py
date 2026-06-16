@@ -1,8 +1,9 @@
-"""Merge approach runner on a given instance (for comparison). Needs a main worktree."""
+"""Merge approach runner (for comparison). Needs a main worktree. Reports cost and time."""
 
 import json
 import os
 import sys
+import time
 
 
 def main():
@@ -16,8 +17,12 @@ def main():
 
     p = Problem(num_cities=cfg["n"], density=cfg["d"], alpha=cfg["a"], beta=cfg["b"],
                 seed=cfg.get("pseed", 42))
+
+    t0 = time.perf_counter()
     _path, cost = merge_solver(p)
-    print(json.dumps({"cost": cost}))
+    elapsed = time.perf_counter() - t0
+
+    print(json.dumps({"cost": cost, "time": elapsed}))
 
 
 if __name__ == "__main__":

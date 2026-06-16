@@ -41,42 +41,43 @@ CONFIGS = [
 ]
 
 
-def run(runner, target, cfg, key="cost"):
+def run(runner, target, cfg):
     proc = subprocess.run(
         [sys.executable, os.path.join(HERE, runner), target, json.dumps(cfg)],
         capture_output=True, text=True,
     )
     if proc.returncode != 0:
-        return None, proc.stderr.strip().splitlines()[-1] if proc.stderr.strip() else "error"
-    data = json.loads(proc.stdout.strip().splitlines()[-1])
-    return (data[key] if isinstance(key, str) else {k: data[k] for k in key}), None
+        return None
+    return json.loads(proc.stdout.strip().splitlines()[-1])
 
 
 def main():
     have_merge = os.path.isdir(WT)
-    hdr = f"{'instance':30} {'PW GA':>16} {'mio GA(raw)':>16} {'match':>6} {'mio GA(βopt)':>16} {'Merge':>14}"
-    print(hdr)
-    print("-" * len(hdr))
-    all_match = True
+    cols = (f"{'instance':28} {'PW: cost / t':>22} {'mio raw: cost / t':>22} {'match':>6} "
+            f"{'mio βopt: cost':>16} {'Merge: cost / t':>20}")
+    print(cols)
+    print("-" * len(cols))
+    rows, all_match = [], True
     for label, n, d, a, b, pseed, gaseed in CONFIGS:
         cfg = {"n": n, "d": d, "a": a, "b": b, "pseed": pseed, "gaseed": gaseed, "pop": POP, "gen": GEN}
-        pw, e1 = run("_verify_pw.py", PW, cfg)
-        mio, e2 = run("_verify_mio.py", MIO, cfg, key=("raw_cost", "opt_cost"))
-        merge, _ = (run("_verify_merge.py", WT, cfg) if have_merge else (None, "no wt"))
-
+        pw = run("_verify_pw.py", PW, cfg)
+        mio = run("_verify_mio.py", MIO, cfg)
+        merge = run("_verify_merge.py", WT, cfg) if have_merge else None
         if pw is None or mio is None:
-            print(f"{label:30} {'ERR':>16} {'ERR':>16} {'-':>6}   {e1 or e2}")
+            print(f"{label:28} ERROR")
             all_match = False
             continue
-        raw, opt = mio["raw_cost"], mio["opt_cost"]
-        match = abs(pw - raw) <= 1e-6 * max(1.0, abs(pw))
+        match = abs(pw["cost"] - mio["raw_cost"]) <= 1e-6 * max(1.0, abs(pw["cost"]))
         all_match = all_match and match
-        merge_s = f"{merge:.4f}" if merge is not None else "n/a"
-        print(f"{label:30} {pw:16.4f} {raw:16.4f} {('EXACT' if match else 'DIFF'):>6} "
-              f"{opt:16.4f} {merge_s:>14}")
-
-    print("-" * len(hdr))
+        rows.append((label, pw, mio, merge, match))
+        merge_s = f"{merge['cost']:.2f} / {merge['time']:.2f}s" if merge else "n/a"
+        print(f"{label:28} {pw['cost']:13.2f} /{pw['time']:6.2f}s "
+              f"{mio['raw_cost']:13.2f} /{mio['time']:6.2f}s {('EXACT' if match else 'DIFF'):>6} "
+              f"{mio['opt_cost']:16.2f} {merge_s:>20}")
+    print("-" * len(cols))
     print(f"GA parity (mio raw == project-work): {'ALL EXACT' if all_match else 'MISMATCH FOUND'}")
+    print("(mio raw and βopt come from one solve, so they share the listed mio time.)")
+    return rows
 
 
 if __name__ == "__main__":
