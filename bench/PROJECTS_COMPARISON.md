@@ -1,10 +1,10 @@
-# project-work-mio vs. original project-work
+# project-work-mio vs. original project-work vs. Merge approach
 
-Same instances and seeds. *PW* = original flat solver (no beta optimizer); *mio noβopt* = this project's GA with the beta optimizer disabled; *mio βopt* = full pipeline (GA + beta optimizer). Δ is improvement over the per-city baseline; t is wall-clock solve time. The first two columns are the apples-to-apples architecture comparison (neither uses the beta optimizer); the third shows what the beta optimizer adds.
+Same instances and seeds. **PW** = original project-work GA (gen=1000); **Merge** = the original constructive Merge heuristic + beta optimizer; **mio noβopt** = this project's GA with the beta optimizer off; **mio βopt** = this project's full pipeline. Δ = improvement over the per-city baseline; t = wall-clock solve time. mio GA budget: gen=1000, pop=100.
 
-| n | d | α | β | baseline | PW: Δ / t | mio noβopt: Δ / t | mio βopt: Δ / t | PW→mio speed |
+| n | d | α | β | baseline | PW: Δ / t | Merge: Δ / t | mio noβopt: Δ / t | mio βopt: Δ / t |
 |--:|--:|--:|--:|--:|--:|--:|--:|--:|
-| 100 | 0.2 | 1 | 1 | 25266 | 0.13% / 189.8s | -0.00% / 2.9s | -0.00% / 2.8s | 68× |
-| 100 | 0.2 | 1 | 2 | 5334402 | 7.82% / 116.1s | 6.67% / 3.0s | 99.28% / 3.3s | 35× |
-| 100 | 1.0 | 1 | 1 | 18266 | 0.07% / 105.8s | -0.00% / 6.2s | -0.00% / 6.3s | 17× |
-| 100 | 1.0 | 1 | 2 | 5404978 | 21.42% / 180.7s | 16.87% / 6.0s | 99.45% / 9.1s | 20× |
+| 100 | 0.2 | 1 | 1 | 25266 | 0.13% / 226.27s | 0.12% / 0.11s | 0.13% / 129.35s | 0.13% / 129.35s |
+| 100 | 0.2 | 1 | 2 | 5334402 | 7.79% / 213.82s | 99.29% / 0.85s | 6.99% / 114.73s | 99.28% / 114.73s |
+| 100 | 1.0 | 1 | 1 | 18266 | 0.07% / 110.27s | -0.00% / 0.03s | 0.07% / 40.84s | 0.07% / 40.84s |
+| 100 | 1.0 | 1 | 2 | 5404978 | 22.01% / 72.22s | 99.58% / 0.18s | 22.02% / 43.84s | 99.47% / 43.84s |
