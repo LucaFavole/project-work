@@ -12,6 +12,7 @@ import networkx as nx
 
 from Problem import Problem
 from src.goldcollector import GAConfig, GeneticSolver, Instance
+from src.goldcollector.postprocess import path_cost as walk_cost
 
 
 def _config_for(n_nodes: int) -> GAConfig:
@@ -47,7 +48,9 @@ def problem_solver(problem: Problem, optimize: bool = True) -> tuple[list[tuple[
 
     `path` is a list of (city, gold_picked_up) steps; the beta optimizer is
     applied automatically when beta > 1 (unless `optimize=False`). `cost` is
-    `problem.path_cost(path)`. Falls back to the baseline path if the GA fails
+    computed internally (the edge-summed `postprocess.path_cost`), so the solver
+    works with the original `Problem` API and does not depend on the project's
+    added `Problem.path_cost`. Falls back to the baseline path if the GA fails
     to beat it.
     """
     start = time()
@@ -57,10 +60,10 @@ def problem_solver(problem: Problem, optimize: bool = True) -> tuple[list[tuple[
     ).solve()
 
     path = solution.walk
-    cost = problem.path_cost(path)
+    cost = walk_cost(path, instance)
 
     baseline_path = _baseline_walk(problem)
-    baseline_cost = problem.path_cost(baseline_path)
+    baseline_cost = walk_cost(baseline_path, instance)
     if baseline_cost < cost:
         logging.info(f"goldcollector: GA {cost:.2f} worse than baseline {baseline_cost:.2f}; using baseline")
         path, cost = baseline_path, baseline_cost

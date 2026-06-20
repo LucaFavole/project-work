@@ -12,6 +12,10 @@ def path_optimizer(path: list[tuple[int, float]], problem) -> list[tuple[int, fl
     if beta <= 1:
         return path
 
+    # Cache the graph once: the original Problem.graph returns a fresh copy on
+    # every access, so reading it per-edge inside the loop would be O(V+E) each time.
+    graph = problem.graph
+
     total_static_dist = 0.0      # Denominator: sum_static
     total_weighted_cost = 0.0    # Numerator: sum_weighted
 
@@ -23,7 +27,7 @@ def path_optimizer(path: list[tuple[int, float]], problem) -> list[tuple[int, fl
         v, gold_at_v = path[i+1]
 
         # 1. Get geometric distance of the edge
-        dist = problem.graph[u][v]['dist']
+        dist = graph[u][v]['dist']
 
         # 2. Update gold on vehicle BEFORE moving?
         # Depends on the logic: path[i] tells how much gold is at node i.

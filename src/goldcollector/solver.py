@@ -41,33 +41,41 @@ class GeneticSolver:
         rng = random.Random(cfg.seed)
         gold = self.instance.gold
         cost = self.cost
-        select, cross, mutate = cfg.selection, cfg.crossover, cfg.mutation
+        cities = self.instance.cities
 
         def fitness(order):
             return total_cost(decode(order, cost, gold), cost, gold)
 
-        population = []
-        for _ in range(cfg.pop_size):
-            ind = self.instance.cities[:]
-            rng.shuffle(ind)
-            population.append(ind)
+        if len(cities) < 2:
+            # 0 or 1 collectable city: the visiting order is fixed, so there is
+            # nothing to evolve and the OX crossover / mutation operators (which
+            # need >= 2 genes to sample two distinct positions) would raise. Decode
+            # the single trivial order directly.
+            best_order, best_fit = cities[:], fitness(cities)
+        else:
+            select, cross, mutate = cfg.selection, cfg.crossover, cfg.mutation
+            population = []
+            for _ in range(cfg.pop_size):
+                ind = cities[:]
+                rng.shuffle(ind)
+                population.append(ind)
 
-        best_order, best_fit = None, float("inf")
-        for _ in range(cfg.generations):
-            scored = [(ind, fitness(ind)) for ind in population]
-            scored.sort(key=lambda x: x[1])
+            best_order, best_fit = None, float("inf")
+            for _ in range(cfg.generations):
+                scored = [(ind, fitness(ind)) for ind in population]
+                scored.sort(key=lambda x: x[1])
 
-            if scored[0][1] < best_fit:
-                best_order, best_fit = scored[0][0][:], scored[0][1]
+                if scored[0][1] < best_fit:
+                    best_order, best_fit = scored[0][0][:], scored[0][1]
 
-            new_population = [ind for ind, _ in scored[: cfg.elite_size]]
-            while len(new_population) < cfg.pop_size:
-                parent1 = select.select(rng, scored)
-                parent2 = select.select(rng, scored)
-                child = cross.cross(rng, parent1, parent2)
-                mutate.mutate(rng, child)
-                new_population.append(child)
-            population = new_population
+                new_population = [ind for ind, _ in scored[: cfg.elite_size]]
+                while len(new_population) < cfg.pop_size:
+                    parent1 = select.select(rng, scored)
+                    parent2 = select.select(rng, scored)
+                    child = cross.cross(rng, parent1, parent2)
+                    mutate.mutate(rng, child)
+                    new_population.append(child)
+                population = new_population
 
         stops = decode(best_order, cost, gold)
         if self.optimize:

@@ -82,4 +82,4 @@ def optimize_solution(stops, instance):
         expanded = expand_tour(tour, instance)
         optimized = path_optimizer(expanded, instance.problem)
         walk.extend(optimized[1:])  # skip the leading depot; we already end at one
-    return walk, instance.problem.path_cost(walk)
+    return walk, path_cost(walk, instance)
